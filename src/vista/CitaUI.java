@@ -10,6 +10,7 @@ import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,8 @@ import java.util.List;
  * Si cita != null, el formulario se pre-rellena para modificación.
  */
 public class CitaUI extends JDialog {
+
+    private static final DateTimeFormatter FMT_HORA = DateTimeFormatter.ofPattern("hh:mm a");
 
     private final MainUI           mainUI;
     private final CitaControlador   citaControlador;
@@ -32,7 +35,7 @@ public class CitaUI extends JDialog {
     private JTextArea  taObservaciones;
     private JComboBox<String> comboServicio;
     private JCheckBox  chkAntipulgas, chkDesparasitante, chkCorteUnas, chkCorteSanitario;
-    private JTextField tfHora;
+    private JComboBox<String> comboHora, comboMinuto, comboAMPM;
     private JLabel     lblDuracion, lblPrecio;
 
     public CitaUI(MainUI mainUI, CitaControlador citaControlador,
@@ -128,12 +131,40 @@ public class CitaUI extends JDialog {
 
     private JPanel seccionHora() {
         JPanel p = seccion("Horario");
-        tfHora = fila(p, "Hora de inicio (HH:MM) *");
-        tfHora.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void insertUpdate(javax.swing.event.DocumentEvent e)  { calcularEstimados(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e)  { calcularEstimados(); }
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { calcularEstimados(); }
-        });
+        
+        // Crear arrays para horas (09-18), minutos y AM/PM
+        String[] horas = new String[10];
+        for (int i = 0; i < 10; i++) horas[i] = String.format("%02d", 9 + i);
+        String[] minutos = {"00", "15", "30", "45"};
+        String[] ampm = {"AM", "PM"};
+        
+        comboHora = new JComboBox<>(horas);
+        comboMinuto = new JComboBox<>(minutos);
+        comboAMPM = new JComboBox<>(ampm);
+        
+        comboHora.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        comboMinuto.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        comboAMPM.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        
+        comboHora.setMaximumSize(new Dimension(60, 32));
+        comboMinuto.setMaximumSize(new Dimension(60, 32));
+        comboAMPM.setMaximumSize(new Dimension(60, 32));
+        
+        comboHora.addActionListener(e -> calcularEstimados());
+        comboMinuto.addActionListener(e -> calcularEstimados());
+        comboAMPM.addActionListener(e -> calcularEstimados());
+        
+        JPanel pHora = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        pHora.setOpaque(false);
+        pHora.add(comboHora);
+        pHora.add(new JLabel(":"));
+        pHora.add(comboMinuto);
+        pHora.add(comboAMPM);
+        
+        p.add(LoginUI.crearLabel("Hora de inicio *"));
+        p.add(Box.createVerticalStrut(4));
+        p.add(pHora);
+        
         tfPeso.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             public void insertUpdate(javax.swing.event.DocumentEvent e)  { calcularEstimados(); }
             public void removeUpdate(javax.swing.event.DocumentEvent e)  { calcularEstimados(); }
@@ -190,12 +221,20 @@ public class CitaUI extends JDialog {
     }
 
     private void guardar() {
-        // Validar y parsear hora
+        // Validar y parsear hora desde comboboxes
         LocalTime hora;
         try {
-            hora = LocalTime.parse(tfHora.getText().trim());
-        } catch (DateTimeParseException ex) {
-            mainUI.mostrarError("Formato de hora inválido. Use HH:MM (ej: 09:30)");
+            int h = Integer.parseInt((String) comboHora.getSelectedItem());
+            int m = Integer.parseInt((String) comboMinuto.getSelectedItem());
+            String ampm = (String) comboAMPM.getSelectedItem();
+            
+            // Convertir a formato 24 horas
+            if ("PM".equals(ampm) && h < 12) h += 12;
+            if ("AM".equals(ampm) && h == 12) h = 0;
+            
+            hora = LocalTime.of(h, m);
+        } catch (Exception ex) {
+            mainUI.mostrarError("Error al parsear la hora. Intente de nuevo.");
             return;
         }
 
@@ -247,6 +286,19 @@ public class CitaUI extends JDialog {
         return adics;
     }
 
+    private LocalTime parseHora(String texto) {
+        if (texto == null || texto.isBlank()) throw new DateTimeParseException("Hora vacía", texto, 0);
+        String normalized = texto.trim().toUpperCase().replaceAll("\\s+", " ");
+        // Aceptar entradas sin espacio antes de AM/PM
+        normalized = normalized.replace("AM", " AM").replace("PM", " PM").replaceAll("\\s+", " ").trim();
+
+        try {
+            return LocalTime.parse(normalized);
+        } catch (DateTimeParseException ex) {
+            return LocalTime.parse(normalized, FMT_HORA);
+        }
+    }
+
     private void preRellenar() {
         tfNombreMascota.setText(citaEditar.getNombreMascota());
         tfRaza.setText(citaEditar.getRaza());
@@ -255,7 +307,18 @@ public class CitaUI extends JDialog {
         tfTelefono.setText(citaEditar.getTelefono());
         taObservaciones.setText(citaEditar.getObservacionesPrevias() != null ? citaEditar.getObservacionesPrevias() : "");
         comboServicio.setSelectedItem(citaEditar.getServicioSolicitado());
-        tfHora.setText(citaEditar.getHora().toString());
+        
+        // Cargar hora en formato AM/PM
+        LocalTime hora = citaEditar.getHora();
+        int h = hora.getHour();
+        String ampm = h >= 12 ? "PM" : "AM";
+        if (h > 12) h -= 12;
+        if (h == 0) { h = 12; ampm = "AM"; }
+        
+        comboHora.setSelectedItem(String.format("%02d", h));
+        comboMinuto.setSelectedItem(String.format("%02d", hora.getMinute()));
+        comboAMPM.setSelectedItem(ampm);
+        
         List<String> adics = citaEditar.getAdicionalesSolicitados();
         chkAntipulgas.setSelected(adics.contains(Cita.ADICIONAL_ANTIPULGAS));
         chkDesparasitante.setSelected(adics.contains(Cita.ADICIONAL_DESPARASITANTE));

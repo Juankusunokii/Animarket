@@ -1,4 +1,5 @@
 package vista;
+
 import controlador.CitaControlador;
 import modelo.Cita;
 
@@ -166,13 +167,13 @@ class PagoUI extends JDialog {
         chkPagado.addActionListener(e -> panelTransferencia.setVisible(chkPagado.isSelected()));
 
         // Momento de pago
-        JLabel lblMomento = LoginUI.crearLabel("¿Cuándo se realizó el pago?");
+        JLabel lblMomento = LoginUI.crearLabel("El pago se registra solo después del servicio");
         lblMomento.setAlignmentX(LEFT_ALIGNMENT);
-        comboMomento = new JComboBox<>(new String[]{"Después del servicio", "Antes del servicio"});
+        comboMomento = new JComboBox<>(new String[]{"Después del servicio"});
         comboMomento.setFont(new Font("SansSerif", Font.PLAIN, 13));
         comboMomento.setMaximumSize(new Dimension(Integer.MAX_VALUE, 32));
         comboMomento.setAlignmentX(LEFT_ALIGNMENT);
-        if ("Antes".equals(cita.getMomentoPago())) comboMomento.setSelectedIndex(1);
+        comboMomento.setEnabled(false);
 
         // Panel de transferencia
         panelTransferencia = new JPanel();
@@ -236,7 +237,7 @@ class PagoUI extends JDialog {
     }
 
     private void guardar() {
-        String momento = comboMomento.getSelectedIndex() == 0 ? "Después" : "Antes";
+        String momento = "Después";
         String error = citaControlador.registrarPago(
                 cita.getId(), fecha,
                 chkPagado.isSelected(),
@@ -250,9 +251,9 @@ class PagoUI extends JDialog {
     }
 
     private void verComprobante() {
-        // Aplicar los datos del formulario a la cita temporalmente para el comprobante
+        // Aplicar los datos del formulario al comprobante
         cita.setPagoRealizado(chkPagado.isSelected());
-        cita.setMomentoPago(comboMomento.getSelectedIndex() == 0 ? "Después" : "Antes");
+        cita.setMomentoPago("Después");
         cita.setNombreTransferencia(tfNombreTransferencia.getText().trim());
         cita.setCodigoComprobante(tfCodigo.getText().trim());
         String html = citaControlador.generarComprobante(cita);

@@ -51,12 +51,12 @@ public class Agenda {
     }
 
     /**
-     * Sugiere horarios alternativos disponibles (cada 30 min desde las 8:00
+     * Sugiere horarios alternativos disponibles (cada 30 min desde las 9:00
      * hasta las 18:00) para una duración dada.
      */
     public List<LocalTime> sugerirHorariosAlternativos(int duracion) {
         List<LocalTime> sugerencias = new ArrayList<>();
-        LocalTime inicio = LocalTime.of(8, 0);
+        LocalTime inicio = LocalTime.of(9, 0);
         LocalTime limite = LocalTime.of(18, 0);
 
         while (!inicio.plusMinutes(duracion).isAfter(limite)) {

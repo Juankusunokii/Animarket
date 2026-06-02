@@ -22,6 +22,7 @@ import java.util.List;
 public class MainUI extends JFrame {
 
     private static final DateTimeFormatter FMT_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter FMT_HORA  = DateTimeFormatter.ofPattern("hh:mm a");
 
     private final AuthControlador    authControlador;
     private final GestorArchivo     gestorArchivo;
@@ -203,7 +204,7 @@ public class MainUI extends JFrame {
         for (Cita c : citas) {
             modeloTabla.addRow(new Object[]{
                 c.getId(),
-                c.getHora(),
+                c.getHora().format(FMT_HORA),
                 c.getNombreMascota(),
                 c.getRaza(),
                 c.getNombreDueno(),
@@ -260,6 +261,10 @@ public class MainUI extends JFrame {
     private void registrarNovedades() {
         Cita c = getCitaSeleccionada();
         if (c == null) return;
+        if (c.isPagoRealizado()) {
+            mostrarError("No se pueden registrar novedades si el pago ya fue realizado.");
+            return;
+        }
         new NovedadesUI(this, citaControlador, c, fechaActual).setVisible(true);
     }
 
@@ -299,7 +304,7 @@ public class MainUI extends JFrame {
         tablaAgenda.setFont(new Font("SansSerif", Font.PLAIN, 13));
         tablaAgenda.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
         tablaAgenda.getTableHeader().setBackground(LoginUI.COLOR_VERDE);
-        tablaAgenda.getTableHeader().setForeground(Color.WHITE);
+        tablaAgenda.getTableHeader().setForeground(Color.BLACK);
         tablaAgenda.setSelectionBackground(new Color(200, 230, 210));
         tablaAgenda.setGridColor(new Color(220, 235, 222));
         tablaAgenda.setShowHorizontalLines(true);

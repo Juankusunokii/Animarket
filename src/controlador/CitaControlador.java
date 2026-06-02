@@ -51,6 +51,11 @@ public class CitaControlador {
                                  servicio, adicionales);
         int duracion = temporal.calcularDuracion();
 
+        // Validar rango de horario de atención
+        if (!esHorarioValido(hora, duracion)) {
+            return "Las citas solo se pueden agendar entre las 09:00 y las 18:00.";
+        }
+
         // Verificar disponibilidad
         if (!agenda.verificarDisponibilidad(hora, duracion, -1)) {
             List<LocalTime> alternativas = agenda.sugerirHorariosAlternativos(duracion);
@@ -89,6 +94,10 @@ public class CitaControlador {
         cita.setAdicionalesSolicitados(adicionales);
         cita.setObservacionesPrevias(observacionesPrevias);
         int nuevaDuracion = cita.calcularDuracion();
+
+        if (!esHorarioValido(horaNueva, nuevaDuracion)) {
+            return "Las citas solo se pueden agendar entre las 09:00 y las 18:00.";
+        }
 
         if (!agenda.verificarDisponibilidad(horaNueva, nuevaDuracion, id)) {
             List<LocalTime> alternativas = agenda.sugerirHorariosAlternativos(nuevaDuracion);
@@ -135,7 +144,7 @@ public class CitaControlador {
         Cita cita = agenda.buscarPorId(id);
         if (cita == null) return "No se encontró la cita.";
         cita.setPagoRealizado(pagado);
-        cita.setMomentoPago(momento);
+        cita.setMomentoPago("Después");
         cita.setNombreTransferencia(nombreTransferencia);
         cita.setCodigoComprobante(codigo);
         persistirTodas(fecha);
@@ -169,6 +178,13 @@ public class CitaControlador {
              + (cita.getObservacionesPosteriores() != null
                 ? fila("Observaciones", cita.getObservacionesPosteriores()) : "")
              + "</table></body></html>";
+    }
+
+    private boolean esHorarioValido(LocalTime hora, int duracion) {
+        if (hora == null) return false;
+        LocalTime inicioAtencion = LocalTime.of(9, 0);
+        LocalTime finAtencion    = LocalTime.of(18, 0);
+        return !hora.isBefore(inicioAtencion) && !hora.plusMinutes(duracion).isAfter(finAtencion);
     }
 
     private String fila(String k, String v) {
